@@ -1,4 +1,4 @@
-name: Main pull request workflow
+name: Main PR Workflow
 
 on:
   pull_request:
