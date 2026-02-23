@@ -35,8 +35,12 @@ jobs:
 
   Publish-Precheck:
     runs-on: ubuntu-latest
-    needs: Build-and-Test
-    if: contains(github.event.pull_request.labels.*.name, 'publish')
+    needs: [Build-and-Test, E2E-Tests]
+    if: |
+      always() && 
+      needs.Build-and-Test.result == 'success' && 
+      (needs.E2E-Tests.result == 'success' || needs.E2E-Tests.result == 'skipped') && 
+      contains(github.event.pull_request.labels.*.name, 'publish')
     steps:
       - name: publish
         uses: kirylzhan-stack/cicd-repo/.github/actions/publish@main
