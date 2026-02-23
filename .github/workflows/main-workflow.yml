@@ -10,19 +10,7 @@ on:
 jobs:
   Init:
     runs-on: ubuntu-latest
-    outputs:
-      VERSION: ${{ steps.env_init.outputs.VERSION }}
-      PACK_NAME: ${{ steps.env_init.outputs.PACK_NAME }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: ENV init
-        id: env_init
-        run: |
-          echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
-          echo "PACK_NAME=$(jq -r .name package.json)" >> $GITHUB_OUTPUT
-
       - name: Branch Protection
         env:
           GH_TOKEN: ${{ secrets.ACCESS_PAT }}
@@ -50,8 +38,6 @@ jobs:
 
       - name: Build and Test Action
         uses: kirylzhan-stack/cicd-repo/.github/actions/build-and-test@main
-        with:
-          VERSION: ${{ needs.Init.outputs.VERSION }}
 
   E2E-Tests:
     runs-on: ubuntu-latest
