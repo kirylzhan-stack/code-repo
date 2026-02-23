@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Init:
+  init:
     runs-on: ubuntu-latest
     steps:
       - name: Branch Protection
@@ -18,24 +18,24 @@ jobs:
           GH_TOKEN: ${{ secrets.ACCESS_PAT }}
           REPO: ${{ github.repository }}
 
-  Build-and-Test:
-    needs: Init
+  build-and-test:
+    needs: init
     runs-on: ubuntu-latest
     steps:
       - name: Build and Test Action
         uses: kirylzhan-stack/cicd-repo/.github/actions/build-and-test@main
 
-  E2E-Tests:
+  e2e-tests:
     runs-on: ubuntu-latest
-    needs: Build-and-Test
+    needs: build-and-test
     if: contains(github.event.pull_request.labels.*.name, 'verify')
     steps:
       - name: E2E tests
         uses: kirylzhan-stack/cicd-repo/.github/actions/e2e-tests@main
 
-  Publish-Precheck:
+  publish-precheck:
     runs-on: ubuntu-latest
-    needs: [Build-and-Test, E2E-Tests]
+    needs: [build-and-test, e2e-tests]
     if: |
       always() && 
       needs.Build-and-Test.result == 'success' && 
