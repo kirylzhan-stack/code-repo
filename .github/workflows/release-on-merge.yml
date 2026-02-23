@@ -15,6 +15,7 @@ jobs:
         with:
           name: ${{ vars.PUBLISH_ARTIFACT }}
           github-token: ${{ secrets.ACCESS_PAT }}
+          run-id: ${{ vars.RUN_ID}}
           path: .
 
       - name: Version Init
