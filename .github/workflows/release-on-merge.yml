@@ -28,6 +28,7 @@ jobs:
         run: |
           echo "Publishing to npm..."
           jq 'del(.scripts.prepare)' package.json > package.json.tmp && mv package.json.tmp package.json
+          npm config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
           npm publish --access public
 
       - name: Create Git Tag and GitHub Release
