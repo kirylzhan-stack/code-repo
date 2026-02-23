@@ -1,5 +1,7 @@
 name: Main pull request workflow
 
+# its a dev branch
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
@@ -8,37 +10,100 @@ on:
 jobs:
   Init:
     runs-on: ubuntu-latest
-    outputs:
-      VERSION: ${{ steps.env_init.outputs.VERSION }}
-      PACK_NAME: ${{ steps.env_init.outputs.PACK_NAME }}
     steps:
       - name: Branch Protection
-        uses: kirylzhan-stack/cicd-repo/.github/actions/branch-protection@main
-        with:
+        env:
           GH_TOKEN: ${{ secrets.ACCESS_PAT }}
           REPO: ${{ github.repository }}
+        run: |
+          echo '{
+            "required_linear_history": true,
+            "enforce_admins": true,
+            "required_pull_request_reviews": null,
+            "restrictions": null,
+            "required_status_checks": {
+              "strict": true,
+              "contexts": ["Build-and-Test"]
+            }
+          }' | gh api -X PUT /repos/$REPO/branches/main/protection \
+            -H "Accept: application/vnd.github.v3+json" \
+            --input -
 
   Build-and-Test:
     needs: Init
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Build and Test Action
         uses: kirylzhan-stack/cicd-repo/.github/actions/build-and-test@main
-        with:
-          VERSION: ${{ needs.Init.outputs.VERSION }}
 
   E2E-Tests:
     runs-on: ubuntu-latest
-    needs: Build-and-Test
+    needs: [Build-and-Test, Init]
     if: contains(github.event.pull_request.labels.*.name, 'verify')
     steps:
-      - name: E2E tests
-        uses: kirylzhan-stack/cicd-repo/.github/actions/e2e-tests@main
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-  Publish-Precheck:
-    runs-on: ubuntu-latest
-    needs: Build-and-Test
-    if: contains(github.event.pull_request.labels.*.name, 'publish')
-    steps:
-      - name: publish
-        uses: kirylzhan-stack/cicd-repo/.github/actions/publish@main
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-${{ needs.Init.outputs.VERSION }}
+          path: .
+
+      - name: Set-Up local npm registry
+        run: |
+          cat <<EOF > verdaccio-config.yaml
+          storage: ./verdaccio-storage
+          auth:
+            htpasswd:
+              file: ./htpasswd
+          packages:
+            '**':
+              access: \$all
+              publish: \$all
+          EOF
+          npx verdaccio --config verdaccio-config.yaml --listen 4873 &
+          npx wait-on http://localhost:4873
+
+      - name: publish to local npm registry
+        run: |
+          npm config set registry http://localhost:4873
+          npm config set //localhost:4873/:_authToken "dummy-token"
+          npm publish
+
+      - name: Run E2E Package Test
+        env:
+          PACK_NAME: ${{ needs.Init.outputs.PACK_NAME }}
+        run: |
+          # Извлекаем имя твоего пакета из package.json (через утилиту jq)
+          PKG_NAME=$(jq -r '.name' package.json)
+          mkdir test
+          cd test
+          npm init -y
+          npm pkg set type="module"
+          npm install $PACK_NAME --registry http://localhost:4873
+          cat <<EOF > test.js
+          import { sparkStatus, tinyWin } from '$PACK_NAME';
+
+          console.log('🔄 Testing sparkStatus...');
+          const status = sparkStatus('Alice', 'turbo');
+          if (status !== 'Alice: shipping mode') {
+            console.error('❌ E2E Failed: sparkStatus returned incorrect value ->', status);
+            process.exit(1);
+          }
+
+          console.log('🔄 Testing tinyWin...');
+          const win = tinyWin(10);
+          if (win !== 'big win') {
+            console.error('❌ E2E Failed: tinyWin returned incorrect value ->', win);
+            process.exit(1);
+          }
+
+          console.log('✅ All E2E Consumer Tests Passed Successfully!');
+          EOF
+          node test.js
