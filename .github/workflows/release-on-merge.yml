@@ -1,6 +1,7 @@
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
 
 jobs:
   Release:
@@ -13,6 +14,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ vars.PUBLISH_ARTIFACT }}
+          github-token: ${{ secrets.ACCESS_PAT }}
           path: .
 
       - name: Version Init
