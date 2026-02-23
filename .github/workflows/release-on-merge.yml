@@ -56,9 +56,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           echo "Creating Git tag and GitHub Release for v$VERSION..."
-
-          # Используем GitHub CLI для создания релиза и тега одновременно
-          # --generate-notes автоматически соберет changelog из PR
           gh release create "v$VERSION" \
             --title "Release v$VERSION: $PR_TITLE" \
             --notes "Automated release from PR #$PR_NUMBER" \
