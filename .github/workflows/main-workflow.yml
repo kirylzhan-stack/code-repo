@@ -37,3 +37,6 @@ jobs:
     steps:
       - name: publish
         uses: kirylzhan-stack/cicd-repo/.github/actions/publish@main
+        with:
+          GH_TOKEN: ${{ secrets.ACCESS_PAT }}
+          REPO: ${{ github.repository }}
