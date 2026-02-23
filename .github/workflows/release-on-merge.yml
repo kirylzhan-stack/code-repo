@@ -10,6 +10,15 @@ jobs:
     outputs:
       VERSION: ${{ steps.version_init.outputs.VERSION }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Version Init
+        id: version_init
+        run: echo "VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -18,16 +27,17 @@ jobs:
           run-id: ${{ vars.RUN_ID}}
           path: .
 
-      - name: Version Init
-        id: version_init
-        run: echo "VERSION=$(jq -r .version pr-code/package.json)" >> $GITHUB_OUTPUT
-
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "Publishing to npm..."
+          jq 'del(.scripts.prepare)' package.json > package.json.tmp && mv package.json.tmp package.json
+          npm config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
           npm publish --access public
+
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Create Git Tag and GitHub Release
         env:
