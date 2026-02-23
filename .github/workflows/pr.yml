@@ -22,22 +22,10 @@ jobs:
           echo "PACK_NAME=$(jq -r .name package.json)" >> $GITHUB_OUTPUT
 
       - name: Branch Protection
-        env:
+        uses: kirylzhan-stack/cicd-repo/.github/actions/branch-protection@main
+        with:
           GH_TOKEN: ${{ secrets.ACCESS_PAT }}
           REPO: ${{ github.repository }}
-        run: |
-          echo '{
-            "required_linear_history": true,
-            "enforce_admins": true,
-            "required_pull_request_reviews": null,
-            "restrictions": null,
-            "required_status_checks": {
-              "strict": true,
-              "contexts": ["Build-and-Test"]
-            }
-          }' | gh api -X PUT /repos/$REPO/branches/main/protection \
-            -H "Accept: application/vnd.github.v3+json" \
-            --input -
 
   Build-and-Test:
     needs: Init
