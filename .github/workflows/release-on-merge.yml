@@ -6,11 +6,39 @@ jobs:
   Release:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'publish')
-    permissions:
-      contents: write
+    outputs:
+      VERSION: ${{ steps.version_init.outputs.VERSION }}
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ vars.PUBLISH_ARTIFACT }}
           path: .
+
+      - name: Version Init
+        id: version_init
+        run: echo "VERSION=$(jq -r .version pr-code/package.json)" >> $GITHUB_OUTPUT
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Publishing to npm..."
+          npm publish --access public
+
+      - name: Create Git Tag and GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_PAT }}
+          VERSION: ${{ steps.version_init.outputs.VERSION }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Creating Git tag and GitHub Release for v$VERSION..."
+
+          # Используем GitHub CLI для создания релиза и тега одновременно
+          # --generate-notes автоматически соберет changelog из PR
+          gh release create "v$VERSION" \
+            --title "Release v$VERSION: $PR_TITLE" \
+            --notes "Automated release from PR #$PR_NUMBER" \
+            --generate-notes \
+            --target ${{ github.event.pull_request.base.ref }}
