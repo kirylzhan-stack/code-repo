@@ -1,6 +1,6 @@
 {
   "name": "little-spark-kit",
-  "version": "0.1.6",
+  "version": "0.1.4",
   "description": "A tiny TypeScript package with fun helpers for CI demos.",
   "type": "module",
   "main": "dist/index.js",
