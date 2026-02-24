@@ -5,6 +5,7 @@ on:
 jobs:
   init:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'publish')
     steps:
       - name: Branch Protection
         uses: kirylzhan-stack/cicd-repo/.github/actions/branch-protection@main
